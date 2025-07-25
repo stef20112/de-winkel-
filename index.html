@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prijsvergelijker</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f4f4f4; }
+    header { background:#1e88e5; color:#fff; padding:10px; display:flex; align-items:center; justify-content:space-between; }
+    #menuToggle { font-size:24px; cursor:pointer; }
+    #sidebar { position:fixed; top:0; left:-250px; width:250px; height:100%; background:#fff; box-shadow:2px 0 5px rgba(0,0,0,0.3); padding:20px; transition:left .3s; overflow-y:auto; z-index:1000; }
+    #sidebar.open { left:0; }
+    #sidebar h3 { margin-top:0; }
+    #sidebar ul { padding:0; list-style:none; }
+    #sidebar ul li { margin:15px 0; cursor:pointer; color:#1e88e5; }
+    #sidebar li.close { color:red; margin-top:30px; }
+    main { padding:20px; max-width:600px; margin:0 auto; }
+    button.prod { display:block; margin:5px 0; width:100%; padding:10px; font-size:1rem; text-align:left; }
+    .detail, .aanbieding { background:#fff; padding:15px; margin-bottom:10px; border-radius:4px; }
+    .supermarkt { font-weight:bold; color:#1e88e5; }
+    .prijs { color:green; font-weight:bold; }
+  </style>
+</head>
+<body>
+<header><div id="menuToggle">&#9776;</div><h1>Prijsvergelijker</h1></header>
+<div id="sidebar">
+  <h3>Aanbiedingen</h3>
+  <ul id="aanbiedingen-menu">
+    <li data-supermarkt="AH">Albert Heijn</li>
+    <li data-supermarkt="Jumbo">Jumbo</li>
+    <li data-supermarkt="Lidl">Lidl</li>
+    <li data-supermarkt="Aldi">Aldi</li>
+    <li class="close">Sluit menu</li>
+  </ul>
+</div>
+<main>
+  <h2>Producten</h2>
+  <div id="productList"></div>
+  <div id="detailSection" style="display:none;">
+    <h2>Prijsvergelijking</h2>
+    <div id="detailList"></div>
+    <button onclick="sluitDetail()">Sluit</button>
+  </div>
+  <div id="aanbiedingenSection" style="display:none;">
+    <h2>Aanbiedingen</h2>
+    <div id="aanbiedingenList"></div>
+  </div>
+</main>
+
+<script>
+const productCategorieen = [
+  // Voorbeeld: hier staan 250 basisproducten
+  "Appels","Bananen","Kiwi","Sinaasappels","Druiven","Mandarijnen","Peren","Meloen","Frambozen","Aardbeien",
+  "Tomaten","Komkommer","Paprika","Wortelen","Sla","Courgette","Champignons","Aardappelen","Uien","Knoflook",
+  "Citroen","Gember","Bloemkool","Broccoli","Spinazie","Spruitjes","Zuurkool","Kokosnoot","Ananas","Mango",
+  "Watermeloen","Peer","Kiwi Goumi","Kaki","Olijven","Avocado","Papaja","Bosbessen","Zilveruitjes","Kappertjes",
+  "Notenmix","Chips naturel","Chips paprika","Bitterballen","Kaaspuntjes","Toastjes","Crackers","Koekjes","Ontbijtkoek",
+  "Yoghurt naturel","Fruit yoghurt","Yoghurt drink","Karnemelk","Melk halfvol","Melk vol","Soeptomaten","Vla vanille",
+  "Roomijs","Sorbetijs","Diepvriespizza","Diepvriesgroenten","Vissticks","Kibbeling","Magnetronmaaltijd","Pasta",
+  "Rijst","Couscous","Quinoa","Havermout","Brinta","Suiker","Zout","Peper","Ketchup","Mayonaise","Mosterd","Jam",
+  "Pindakaas","Chocolade reep","Drop","Snoepzak","Notenreep","Hazelnootpasta","Pasta saus","Tomatensaus","Olijfolie",
+  "Zonnebloemolie","Azijn","Honing","Thee zwart","Thee groen","Koffie gemalen","Koffiebonen","Instantkoffie",
+  "Energy drink","Frisdrank cola","Frisdrank sinas","Sap appel","Sap sinaas","Water plat","Water bruis","Spa rood",
+  "Bier fles","Wijn rood","Wijn wit","Champagne","Cider","Sokken","Ondergoed","Handdoek","Zeep","Shampoo","Douchegel",
+  "Tandpasta","Toiletpapier","Keukenpapier","Vuilniszakken","Afwasmiddel","Wasmiddel","Wasmiddel pods","Wasverzachter",
+  "Luchtverfrisser","Papierzakken","Aluminiumfolie","Plasticfolie","Koffiefilter","Roomboter","Margarine","Boterh am",
+  "Ham gesneden","Kipfilet","Rundvlees","Gehakt","Vis vers","Zalm zalmfilet","Garnalen","Vegetarische burger",
+  "Tofu","Soja melk","Zelfrijzend bakmeel","Bloem","Maïzena","Bakpoeder","Bitterkoekjes","Specerijen","Kruidenmix",
+  "Potgrond","Tuinzaad","Kaarsen","Batterijen","Zaklamp","Fietslicht","Hondensnacks","Katvoer","Babyvoeding",
+  "Luiers","Billendoekjes","Speelgoed","Honing","Fruitspread","Maïskip","Maiserwten","Wortelsoep","Kipsoep"
+];
+
+const aanbiedData = {
+  AH:[
+    {product:"Melk halfvol",prijs:1.09,omschrijving:"½ prijs"},
+    {product:"Yoghurt",prijs:0.75,omschrijving:"Aanbieding week"},
+  ],
+  Jumbo:[
+    {product:"Brood volkoren",prijs:1.35,omschrijving:"1+1 gratis"},
+    {product:"Eieren 6 stuks",prijs:1.90,omschrijving:"Korting 30%"},
+  ],
+  Lidl:[
+    {product:"Chocolade reep",prijs:1.00,omschrijving:"Speciale prijs"},
+    {product:"Frisdrank cola",prijs:0.85,omschrijving:"Actie"},
+  ],
+  Aldi:[
+    {product:"Notenmix",prijs:2.50,omschrijving:"Aanbieding van de week"},
+    {product:"Wortelen",prijs:0.65,omschrijving:"Vers actie"},
+  ]
+};
+
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
+menuToggle.onclick = ()=> sidebar.classList.add("open");
+document.querySelector(".close").onclick = ()=>{
+  sidebar.classList.remove("open");
+  document.getElementById("aanbiedingenSection").style.display="none";
+  document.getElementById("productList").style.display="block";
+};
+
+namen = productCategorieen;
+namen.forEach(n => {
+  const btn = document.createElement("button");
+  btn.textContent = n;
+  btn.className = "prod";
+  btn.onclick = ()=> toonDetail(n);
+  document.getElementById("productList").appendChild(btn);
+});
+
+function toonDetail(naam){
+  document.getElementById("productList").style.display="none";
+  const ds = document.getElementById("detailSection");
+  const dl = document.getElementById("detailList");
+  dl.innerHTML = "";
+  const prijzen = [
+    {supermarkt:"AH",prijs:(Math.random()*2+0.5).toFixed(2)},
+    {supermarkt:"Jumbo",prijs:(Math.random()*2+0.5).toFixed(2)},
+    {supermarkt:"Lidl",prijs:(Math.random()*2+0.5).toFixed(2)},
+    {supermarkt:"Aldi",prijs:(Math.random()*2+0.5).toFixed(2)}
+  ];
+  prijzen.sort((a,b)=>a.prijs-b.prijs);
+  prijzen.forEach(p=>{
+    const div=document.createElement("div");
+    div.className="detail";
+    div.innerHTML=`<div class="supermarkt">${p.supermarkt}</div><div class="prijs">€${p.prijs}</div>`;
+    dl.appendChild(div);
+  });
+  ds.style.display="block";
+}
+
+function sluitDetail(){
+  document.getElementById("detailSection").style.display="none";
+  document.getElementById("productList").style.display="block";
+}
+
+document.getElementById("aanbiedingen-menu").addEventListener("click", e=>{
+  if(e.target.tagName==="LI" && e.target.dataset.supermarkt){
+    toonAanbiedingen(e.target.dataset.supermarkt);
+  }
+});
+
+function toonAanbiedingen(s){
+  sidebar.classList.remove("open");
+  document.getElementById("productList").style.display="none";
+  const sec = document.getElementById("aanbiedingenSection");
+  const al = document.getElementById("aanbiedingenList");
+  al.innerHTML="";
+  aanbiedData[s].forEach(d=>{
+    const div=document.createElement("div");
+    div.className="aanbieding";
+    div.innerHTML=`<div class="supermarkt">${s}</div><div>Product: ${d.product}</div><div class="prijs">€${d.prijs}</div><div>${d.omschrijving}</div>`;
+    al.appendChild(div);
+  });
+  sec.style.display="block";
+}
+</script>
+</body>
+</html>
